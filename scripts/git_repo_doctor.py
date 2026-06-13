@@ -360,7 +360,7 @@ def render_plan(state, result):
     lines.append('echo "$GITDIR"   # ALWAYS confirm this variable before any destructive step')
     lines.append("")
 
-    if path.startswith("A"):
+    if path == "A":
         remotes = state["config"].get("remotes", {})
         lines += [
             "## Phase 0 - safety net (BEFORE deleting anything)",
@@ -411,6 +411,21 @@ def render_plan(state, result):
             any_remote = list(remotes.values())[0]
             lines.append(f'cd ~/repo-recovered && git remote add origin {any_remote}')
             lines.append('# after auth works:  git push -u origin --all')
+    elif path == "A?":
+        lines += [
+            "## Phase 0 - confirm reachable size before any destructive action",
+            "# This recommendation is low confidence because reachable size is unknown.",
+            "# Run this first; if it works, rerun git-repo-doctor and follow the new path:",
+            'git --git-dir="$GITDIR" rev-list --all --objects --disk-usage',
+            "# Until reachable size is confirmed, do not remove the repository.",
+            "",
+            "## Phase 1 - optional safe cleanup only",
+            "# These commands remove only proven temporary garbage and stale gc state.",
+            'find "$GITDIR/objects/pack" -name "tmp_pack_*" -delete',
+            'find "$GITDIR/objects" -name "tmp_obj_*" -delete',
+            'rm -f "$GITDIR/gc.log"   # clear any stale lock on auto-gc',
+            'df -h "$GITDIR"',
+        ]
     else:
         lines += [
             "## Phase 0 - safety net first (cheap insurance even for in-place shrink)",
